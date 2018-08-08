@@ -28,7 +28,7 @@ if trace:  # pragma: no cover
 
 DEFAULT_STEP_SIZE_FD = 1e-6
 DEFAULT_STEP_SIZE_CS = 1e-30
-
+STEPS_DV = {}
 
 class DerivOptionsDict(OptionsDictionary):
     """ Derived class that allows the default stepsize to change as you
@@ -48,7 +48,7 @@ class DerivOptionsDict(OptionsDictionary):
                 self._options['step_size']['val'] = DEFAULT_STEP_SIZE_FD
             if value == 'cs':
                 self._options['step_size']['val'] = DEFAULT_STEP_SIZE_CS
-
+            
         if name == 'check_type':
             if self._options['check_step_size']['changed']:
                 return
@@ -176,7 +176,12 @@ class System(object):
         opt.add_option('linearize', False,
                        desc='Set to True if you want linearize to be called '
                        'even though you are using FD.')
-
+        ###TRIAL: ACDI
+        opt.add_option('steps_per_dv', STEPS_DV,                       #ACDI
+                       desc='Test to add a nested dict with dv steps') #ACDI         
+        
+        #############        
+        
         # This will give deprecation warnings, but will convert the old to
         # new options.
         self.fd_options = DeprecatedOptionsDictionary(opt)
@@ -558,7 +563,16 @@ class System(object):
             fd_unknowns = self._get_fd_unknowns()
 
         abs_pnames = self._sysdata.to_abs_pnames
-
+        
+        ######DEBUG 0: ACDI##############
+        #print('##DEBUG\n') #ACDI
+        #print('\nfd_params:', fd_params) #ACDI 
+        #print('\nfd_unknowns:', fd_unknowns) #ACDI
+        #print('\nabs_pnames:', abs_pnames) #ACDI
+        ################################
+        
+        is_dvstep = False # flag if multiple step sizes do not exist
+        
         # Use settings in the system dict unless variables override.
         if use_check:
             step_size = self.deriv_options.get('check_step_size', 1.0e-6)
@@ -570,14 +584,22 @@ class System(object):
             form = self.deriv_options.get('form', 'forward')
             step_calc = self.deriv_options.get('step_calc', 'relative')
             def_type = self.deriv_options.get('type', 'fd')
-
+            ###TRIAL: ACDI
+            # check if the steps per dv are passed. If not set a single step_size
+            if 'steps_per_dv' in self.deriv_options: #ACDI
+                if self.deriv_options['steps_per_dv'] and isinstance(self.deriv_options['steps_per_dv'], dict): #ACDI  
+                    step_size = self.deriv_options.get('steps_per_dv') #ACDI
+                    is_dvstep = True # flag if multiple step sizes exist #ACDI
+            ####            
+            
         # Support for user-override of options in check_partial_derivatives
         if option_overrides:
             step_size = option_overrides.get('check_step_size', step_size)
             form = option_overrides.get('check_form', form)
             step_calc = option_overrides.get('check_step_calc', step_calc)
             def_type = option_overrides.get('check_type', def_type)
-
+               
+        
         jac = {}
         cache2 = None
 
@@ -648,7 +670,17 @@ class System(object):
             fdtype = mydict.get('step_calc', step_calc)
             fdform = mydict.get('form', form)
             cs = mydict.get('type', def_type)
+                      
+            
+            ####DEBUG 1: ACDI
+            #print('##DEBUG\n') #ACDI
+            #print(mydict) #ACDI
+            #print('\nFDstep:', fdstep) #ACDI 
+            #print('\nFDform:', fdform) #ACDI
+            #print('\nPname:', p_name) #ACDI
+            ###########################
 
+            
             # Size our Inputs
             if poi_indices and param_src in poi_indices:
                 p_idxs = poi_indices[param_src]
@@ -656,7 +688,34 @@ class System(object):
             else:
                 p_size = np.size(target_input)
                 p_idxs = range(p_size)
-
+                
+            #########DEBUG 2: ACDI    
+            #print('\nP_size:', p_size) #ACDI  
+            #print('\nP_idx:', p_idxs) #ACDI 
+            ##################            
+            
+            #####TRIAL: ACDI
+            if is_dvstep:
+                p_name_split = p_name.split('.')[-1] # get the design variable
+                if p_name_split in step_size.keys():
+                    fdstep = step_size[p_name_split]
+                    fdstep_size = len(fdstep) # the size will correpsond to p_size and p_idx
+                    # check for appropriate DV size                    
+                    if fdstep_size != p_size:                    
+                        raise RuntimeError("\nPlease assign the appropriate number of FD steps for the design variable: %s." %
+                              (p_name_split))
+                else:
+                    raise RuntimeError("\nDesign variable %s not found. Please assign appropriate step sizes." %
+                              (p_name_split))
+            else:
+                fdstep = [step_size]*p_size                  
+            #################
+                
+            #########DEBUG 5: ACDI    
+            #print('\nfdstep:', fdstep) #ACDI  
+            #print('is_dvstep:', is_dvstep) #ACDI
+            ##################    
+            
             # Size our Outputs and allocate
             for u_name in chain(fd_unknowns, pass_unknowns):
                 if qoi_indices and u_name in qoi_indices:
@@ -665,7 +724,11 @@ class System(object):
                     u_size = np.size(unknowns[u_name])
 
                 jac[u_name, p_name] = np.zeros((u_size, p_size))
-
+                #########DEBUG 3: ACDI    
+                #print('\nU_name:', u_name) #ACDI  
+                ##################  
+            
+            
             # if a given param isn't present in this process, we need
             # to still run the model once for each entry in that param
             # in order to stay in sync with the other processes.
@@ -686,23 +749,23 @@ class System(object):
 
                     # Relative or Absolute step size
                     if fdtype == 'relative':
-                        step = target_input[idx] * fdstep
-                        if step < fdstep:
-                            step = fdstep
+                        step = target_input[idx] * fdstep[idx] #ACDI
+                        if step < fdstep[idx]: #ACDI
+                            step = fdstep[idx] #ACDI
                     else:
-                        step = fdstep
+                        step = fdstep[idx]
 
                     if cs == 'cs':
 
                         probdata = unknowns._probdata
                         probdata.in_complex_step = True
 
-                        inputs._dat[param_key].imag_val[idx] += fdstep
+                        inputs._dat[param_key].imag_val[idx] += fdstep[idx] #ACDI
                         run_model(params, unknowns, resids)
-                        inputs._dat[param_key].imag_val[idx] -= fdstep
+                        inputs._dat[param_key].imag_val[idx] -= fdstep[idx] #ACDI
 
                         # delta resid is delta unknown
-                        resultvec.vec[:] = resultvec.imag_vec*(1.0/fdstep)
+                        resultvec.vec[:] = resultvec.imag_vec*(1.0/fdstep[idx]) #ACDI
                         # Note: vector division is slower than vector mult.
                         probdata.in_complex_step = False
 
