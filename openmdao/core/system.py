@@ -674,7 +674,7 @@ class System(object):
             
             ####DEBUG 1: ACDI
             #print('##DEBUG\n') #ACDI
-            #print(mydict) #ACDI
+            #print('Mydict:', mydict) #ACDI
             #print('\nFDstep:', fdstep) #ACDI 
             #print('\nFDform:', fdform) #ACDI
             #print('\nPname:', p_name) #ACDI
@@ -699,7 +699,7 @@ class System(object):
                 p_name_split = p_name.split('.')[-1] # get the design variable
                 if p_name_split in step_size.keys():
                     fdstep = step_size[p_name_split]
-                    fdstep_size = len(fdstep) # the size will correpsond to p_size and p_idx
+                    fdstep_size = len(fdstep) # the size will correpsond to p_size and p_idx                    
                     # check for appropriate DV size                    
                     if fdstep_size != p_size:                    
                         raise RuntimeError("\nPlease assign the appropriate number of FD steps for the design variable: %s." %
@@ -708,7 +708,8 @@ class System(object):
                     raise RuntimeError("\nDesign variable %s not found. Please assign appropriate step sizes." %
                               (p_name_split))
             else:
-                fdstep = [step_size]*p_size                  
+                fdstep = [step_size]*p_size
+                                  
             #################
                 
             #########DEBUG 5: ACDI    
@@ -749,23 +750,23 @@ class System(object):
 
                     # Relative or Absolute step size
                     if fdtype == 'relative':
-                        step = target_input[idx] * fdstep[idx] #ACDI
-                        if step < fdstep[idx]: #ACDI
-                            step = fdstep[idx] #ACDI
+                        step = target_input[col] * fdstep[col] #ACDI
+                        if step < fdstep[col]: #ACDI
+                            step = fdstep[col] #ACDI
                     else:
-                        step = fdstep[idx]
+                        step = fdstep[col] #ACDI
 
                     if cs == 'cs':
 
                         probdata = unknowns._probdata
                         probdata.in_complex_step = True
 
-                        inputs._dat[param_key].imag_val[idx] += fdstep[idx] #ACDI
+                        inputs._dat[param_key].imag_val[idx] += fdstep[col] #ACDI
                         run_model(params, unknowns, resids)
-                        inputs._dat[param_key].imag_val[idx] -= fdstep[idx] #ACDI
+                        inputs._dat[param_key].imag_val[idx] -= fdstep[col] #ACDI
 
                         # delta resid is delta unknown
-                        resultvec.vec[:] = resultvec.imag_vec*(1.0/fdstep[idx]) #ACDI
+                        resultvec.vec[:] = resultvec.imag_vec*(1.0/fdstep[col]) #ACDI
                         # Note: vector division is slower than vector mult.
                         probdata.in_complex_step = False
 
