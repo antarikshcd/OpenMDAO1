@@ -607,6 +607,10 @@ class Group(System):
             mplen = len(mypath)
 
             params = self._fd_params = []
+            
+            ####DEBUG:ACDI
+            #print('conns:', conns) #ACDI
+            ####
             for tgt, (src, idxs) in iteritems(conns):
                 if mypath == tgt[:mplen]:
                     # look up the Component that contains the source variable

@@ -1365,6 +1365,13 @@ class Problem(object):
         abs_params = []
         fd_unknowns = [var for var in unknown_list if var not in indep_list]
         pass_unknowns = [var for var in unknown_list if var in indep_list]
+        
+        
+        ####DEBUG: ACDI
+        #print('DEBUG problem.py\n')
+        #print('indep_list', indep_list)
+        #print('root.connections', root.connections)        
+        #####        
         for name in indep_list:
 
             if name in unknowns:
@@ -1374,15 +1381,21 @@ class Problem(object):
                 if name == src:
                     name = tgt
                     break
-
+             
             abs_params.append(name)
-
+         
+            ###DEBUG: ACDI
+                          
+                        
+            
+            
         Jfd = root.fd_jacobian(params, unknowns, root.resids, total_derivs=True,
                                fd_params=abs_params, fd_unknowns=fd_unknowns,
                                pass_unknowns=pass_unknowns,
                                poi_indices=self._poi_indices,
                                qoi_indices=self._qoi_indices,
                                use_check=use_check)
+                               
 
         def get_fd_ikey(ikey):
             # FD Input keys are a little funny....

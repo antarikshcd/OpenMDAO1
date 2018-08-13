@@ -564,6 +564,8 @@ class System(object):
 
         abs_pnames = self._sysdata.to_abs_pnames
         
+      
+        
         ######DEBUG 0: ACDI##############
         #print('##DEBUG\n') #ACDI
         #print('\nfd_params:', fd_params) #ACDI 
@@ -636,15 +638,25 @@ class System(object):
             # If our input is connected to a IndepVarComp, then we need to twiddle
             # the unknowns vector instead of the params vector.
             src = self.connections.get(p_name)
+            
+            ###DEBUG: ACDI
+            #print('\n##DEBUG\n') #ACDI
+            #print('\nsrc connections:', src) # ACDI
+            ########
+
+            
             if src is not None:
                 param_src = src[0]  # just the name
-
+                
                 # Have to convert to promoted name to key into unknowns
                 if param_src not in self.unknowns:
                     param_src = to_prom_name[param_src]
 
                 inputs = unknowns
                 param_key = param_src
+                ###DEBUG: ACDI
+                #print('\nparam_key:', param_key) # ACDI
+                 ########
             else:
                 # Cases where the IndepVarComp is somewhere above us.
                 if p_name in states:
@@ -673,8 +685,8 @@ class System(object):
                       
             
             ####DEBUG 1: ACDI
-            #print('##DEBUG\n') #ACDI
-            #print('Mydict:', mydict) #ACDI
+            
+            #print('\nMydict:', mydict) #ACDI
             #print('\nFDstep:', fdstep) #ACDI 
             #print('\nFDform:', fdform) #ACDI
             #print('\nPname:', p_name) #ACDI
@@ -695,18 +707,19 @@ class System(object):
             ##################            
             
             #####TRIAL: ACDI
-            if is_dvstep:
-                p_name_split = p_name.split('.')[-1] # get the design variable
-                if p_name_split in step_size.keys():
-                    fdstep = step_size[p_name_split]
+            if is_dvstep and src is not None:
+                #print('step_size_dict:', step_size)#ACDI                  
+                p_key = param_key # get the design variable
+                if p_key in step_size.keys():
+                    fdstep = step_size[p_key]
                     fdstep_size = len(fdstep) # the size will correpsond to p_size and p_idx                    
                     # check for appropriate DV size                    
                     if fdstep_size != p_size:                    
                         raise RuntimeError("\nPlease assign the appropriate number of FD steps for the design variable: %s." %
-                              (p_name_split))
+                              (p_key))
                 else:
-                    raise RuntimeError("\nDesign variable %s not found. Please assign appropriate step sizes." %
-                              (p_name_split))
+                    raise RuntimeError("\nDesign variable %s not found. Please verify the design variable name." %
+                              (p_key))
             else:
                 fdstep = [step_size]*p_size
                                   
