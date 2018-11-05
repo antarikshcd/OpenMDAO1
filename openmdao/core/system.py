@@ -640,8 +640,12 @@ class System(object):
             src = self.connections.get(p_name)
             
             ###DEBUG: ACDI
-            #print('\n##DEBUG\n') #ACDI
-            #print('\nsrc connections:', src) # ACDI
+            print('\n##DEBUG\n') #ACDI
+            if MPI:
+                rank = MPI.COMM_WORLD.rank
+                print('Rank:', rank)
+                        
+            print('\nsrc connections:', src) # ACDI
             ########
 
             
